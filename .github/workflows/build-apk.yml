@@ -1,0 +1,41 @@
+name: Build and publish Daily Reset APK
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Install Android SDK
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Build Android APK
+        run: gradle --no-daemon :app:assembleDebug
+      - name: Name download
+        run: cp app/build/outputs/apk/debug/app-debug.apk DailyReset.apk
+      - name: Archive build APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: DailyReset-APK
+          path: DailyReset.apk
+      - name: Publish directly installable download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view v1.0 >/dev/null 2>&1 || gh release create v1.0 --title "Daily Reset Android v1.0" --notes "Offline daily, weekly, monthly and seasonal routine tracker. Install DailyReset.apk on Android."
+          gh release upload v1.0 DailyReset.apk --clobber
